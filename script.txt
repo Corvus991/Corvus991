@@ -1,0 +1,190 @@
+package test2;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.util.*;
+import java.util.List;
+
+public class lecteur extends JFrame {
+    private static final int BUREAUX_MAXIMUM = 40;
+    private JTextField champCodeClasse;
+    private JTextField champRangees;
+    private JTextField champColonnes;
+    private JPanel panneauDroit;
+    private List<String> nomsEtudiants;
+
+    public lecteur() {
+        setTitle("Générateur de Plan de Classe");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(1000, 600);
+        
+        // Créer le panneau principal avec GridBagLayout
+        JPanel panneauPrincipal = new JPanel(new GridBagLayout());
+        GridBagConstraints contraintes = new GridBagConstraints();
+        
+        // Créer les panneaux gauche et droit
+        JPanel panneauGauche = creerPanneauGauche();
+        panneauDroit = new JPanel();
+        panneauDroit.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        panneauDroit.setBackground(Color.WHITE);
+        
+        // Ajouter les panneaux au panneau principal
+        contraintes.fill = GridBagConstraints.BOTH;
+        contraintes.weightx = 0.25;
+        contraintes.weighty = 1.0;
+        contraintes.gridx = 0;
+        contraintes.gridy = 0;
+        panneauPrincipal.add(panneauGauche, contraintes);
+        
+        contraintes.weightx = 0.75;
+        contraintes.gridx = 1;
+        panneauPrincipal.add(panneauDroit, contraintes);
+        
+        add(panneauPrincipal);
+        setLocationRelativeTo(null);
+    }
+    
+    private JPanel creerPanneauGauche() {
+        JPanel panneau = new JPanel();
+        panneau.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        panneau.setLayout(new BoxLayout(panneau, BoxLayout.Y_AXIS));
+        panneau.setBackground(Color.WHITE);
+        
+        panneau.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // Créer les conteneurs pour chaque groupe d'entrée
+        JPanel panneauCode = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panneauCode.setBackground(Color.WHITE);
+        JPanel panneauRangees = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panneauRangees.setBackground(Color.WHITE);
+        JPanel panneauColonnes = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panneauColonnes.setBackground(Color.WHITE);
+        
+        // Code de classe
+        JLabel etiquetteCode = new JLabel("Code de classe:");
+        champCodeClasse = new JTextField(8);
+        panneauCode.add(etiquetteCode);
+        panneauCode.add(champCodeClasse);
+        panneau.add(panneauCode);
+        panneau.add(Box.createRigidArea(new Dimension(0, 10)));
+        
+        // Rangées
+        JLabel etiquetteRangees = new JLabel("Nombre de rangées:");
+        champRangees = new JTextField(8);
+        panneauRangees.add(etiquetteRangees);
+        panneauRangees.add(champRangees);
+        panneau.add(panneauRangees);
+        panneau.add(Box.createRigidArea(new Dimension(0, 10)));
+        
+        // Colonnes
+        JLabel etiquetteColonnes = new JLabel("Nombre de colonnes:");
+        champColonnes = new JTextField(8);
+        panneauColonnes.add(etiquetteColonnes);
+        panneauColonnes.add(champColonnes);
+        panneau.add(panneauColonnes);
+        panneau.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        // Bouton générer
+        JButton boutonGenerer = new JButton("Générer le plan");
+        boutonGenerer.addActionListener(e -> genererPlan());
+        panneau.add(boutonGenerer);
+        
+        return panneau;
+    }
+    
+    private void genererPlan() {
+        try {
+            String codeClasse = champCodeClasse.getText().trim();
+            if (codeClasse.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez entrer un code de classe.");
+                return;
+            }
+            
+            int rangees = Integer.parseInt(champRangees.getText().trim());
+            int colonnes = Integer.parseInt(champColonnes.getText().trim());
+            
+            // Vérifier les nombres positifs
+            if (rangees <= 0 || colonnes <= 0) {
+                JOptionPane.showMessageDialog(this, "Les rangées et colonnes doivent être des nombres positifs.");
+                return;
+            }
+            
+            // Vérifier le nombre total de bureaux
+            int totalBureaux = rangees * colonnes;
+            if (totalBureaux > BUREAUX_MAXIMUM) {
+                JOptionPane.showMessageDialog(this, 
+                    "Le nombre total de bureaux (" + totalBureaux + ") dépasse la limite de " + BUREAUX_MAXIMUM + ".\n" +
+                    "Veuillez réduire le nombre de rangées ou de colonnes.");
+                return;
+            }
+            
+            String nomFichier = codeClasse + ".txt";
+            File fichier = new File(nomFichier);
+            
+            if (!fichier.exists()) {
+                String repertoireCourant = new File(".").getAbsolutePath();
+                JOptionPane.showMessageDialog(this, 
+                    "Impossible de trouver le fichier: " + nomFichier + "\n" +
+                    "Recherche dans: " + repertoireCourant + "\n" +
+                    "Assurez-vous que le fichier existe dans ce répertoire.");
+                return;
+            }
+            
+            chargerNomsEtudiants(nomFichier);
+            afficherPlanBureaux(rangees, colonnes);
+            
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Veuillez entrer des nombres valides pour les rangées et colonnes.");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Erreur de lecture du fichier: " + e.getMessage());
+        }
+    }
+    
+    private void chargerNomsEtudiants(String nomFichier) throws IOException {
+        nomsEtudiants = new ArrayList<>();
+        try (BufferedReader lecteur = new BufferedReader(new FileReader(nomFichier))) {
+            String ligne;
+            while ((ligne = lecteur.readLine()) != null) {
+                String[] parties = ligne.split(",");
+                if (parties.length >= 3) {
+                    nomsEtudiants.add(parties[2] + " " + parties[1]);
+                }
+            }
+        }
+        
+        if (nomsEtudiants.isEmpty()) {
+            throw new IOException("Aucun étudiant trouvé dans le fichier.");
+        }
+    }
+    
+    private void afficherPlanBureaux(int rangees, int colonnes) {
+        panneauDroit.removeAll();
+        panneauDroit.setLayout(new GridLayout(rangees, colonnes, 10, 10));
+        
+        List<String> nomsMelanges = new ArrayList<>(nomsEtudiants);
+        Collections.shuffle(nomsMelanges);
+        int indexEtudiant = 0;
+        
+        for (int i = 0; i < rangees * colonnes; i++) {
+            JPanel bureau = new JPanel();
+            bureau.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            bureau.setBackground(Color.WHITE);
+            
+            String nom = (indexEtudiant < nomsMelanges.size()) ? 
+                         nomsMelanges.get(indexEtudiant++) : "Vide";
+            bureau.add(new JLabel(nom));
+            
+            panneauDroit.add(bureau);
+        }
+        
+        panneauDroit.revalidate();
+        panneauDroit.repaint();
+    }
+    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            lecteur frame = new lecteur();
+            frame.setVisible(true);
+        });
+    }
+}
